@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cozy Japanese Pomodoro</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700&family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Tailwind Config for Theme Colors -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        sakura: {
+                            light: '#FFE4E1',
+                            DEFAULT: '#FFB7C5',
+                            dark: '#E8A2A8'
+                        },
+                        matcha: {
+                            light: '#D4E6D9',
+                            DEFAULT: '#B2D3C2',
+                            dark: '#8BA99B'
+                        },
+                        indigo: {
+                            light: '#C5D0E6',
+                            DEFAULT: '#8CA6D9',
+                            dark: '#6B83B3'
+                        },
+                        yuzu: {
+                            light: '#FFF2D6',
+                            DEFAULT: '#FFD57E',
+                            dark: '#D99A29'
+                        },
+                        fuji: {
+                            light: '#E3E0F3',
+                            DEFAULT: '#B5AED4',
+                            dark: '#7F73A2'
+                        },
+                        wood: '#8B5A2B',
+                        paper: '#FDFBF7',
+                        ink: '#4A403A'
+                    },
+                    fontFamily: {
+                        sans: ['Nunito', 'sans-serif'],
+                        jp: ['Zen Maru Gothic', 'sans-serif']
+                    },
+                    boxShadow: {
+                        'soft': '0 10px 40px -10px rgba(0,0,0,0.08)',
+                        'inner-soft': 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.04)'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-image: url('https://i.pinimg.com/originals/4e/47/f4/4e47f4e7b2b4c8d139b341033789378f.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            color: #4A403A;
+            overflow: hidden; /* Prevent scroll from falling petals */
+        }
+
+        /* Glassmorphism Panel - adjusted for better contrast against image */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15);
+        }
+
+        /* Smooth Mode Transitions */
+        .mode-btn {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* SVG Progress Ring */
+        .progress-ring__circle {
+            transition: stroke-dashoffset 1s linear, stroke 0.5s ease;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+
+        /* Sakura Petals Animation */
+        .sakura-petal {
+            position: absolute;
+            background-color: #FFC0CB;
+            border-radius: 15px 0 15px 0;
+            pointer-events: none;
+            opacity: 0.8;
+            box-shadow: 0 0 5px rgba(255, 183, 197, 0.4);
+            z-index: 0;
+        }
+
+        @keyframes fall {
+            0% {
+                top: -10%;
+                transform: translateX(0) rotate(0deg);
+            }
+            100% {
+                top: 110%;
+                transform: translateX(100px) rotate(360deg);
+            }
+        }
+
+        @keyframes sway {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(30px); }
+        }
+
+        /* Pulse Animation for Start Button */
+        @keyframes pulse-soft {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 183, 197, 0.4); }
+            50% { transform: scale(1.05); box-shadow: 0 0 20px 0 rgba(255, 183, 197, 0.6); }
+        }
+        .btn-pulse {
+            animation: pulse-soft 2s infinite;
+        }
+
+        /* Neumorphic inset for timer inner background */
+        .timer-bg-inset {
+            box-shadow: inset 5px 5px 10px rgba(0,0,0,0.03), 
+                        inset -5px -5px 10px rgba(255,255,255,0.8);
+            background: rgba(255,255,255,0.4);
+        }
+
+        /* Hide scrollbar for mode selector on mobile */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Custom Scrollbar for AI Modal */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.05);
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #B2D3C2;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center font-sans antialiased relative">
+
+    <!-- Safe list for Tailwind dynamic classes -->
+    <div class="hidden text-sakura-dark text-matcha-dark text-indigo-dark text-yuzu-dark text-fuji-dark ring-fuji/50 bg-yuzu bg-fuji hover:shadow-yuzu/50 hover:shadow-fuji/50"></div>
+
+    <!-- Container for Sakura Petals -->
+    <div id="sakura-container" class="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-hidden"></div>
+
+    <main class="relative z-10 w-full max-w-xl p-6 mx-auto transition-all duration-500 transform">
+        
+        <!-- Live Time Widget -->
+        <div class="flex justify-center mb-6">
+            <div class="glass-panel rounded-full px-4 py-2 flex items-center gap-3 text-sm font-semibold text-ink transition-all hover:bg-white/80 cursor-default">
+                <i class="fa-solid fa-earth-asia text-matcha-dark"></i>
+                <select id="tz-select" class="bg-transparent outline-none cursor-pointer appearance-none text-ink hover:text-matcha-dark transition-colors font-bold pr-2" onchange="updateClock()">
+                    <option value="Asia/Calcutta" selected>India Standard Time (IST)</option>
+                    <option value="Asia/Tokyo">Tokyo, JP</option>
+                    <option value="auto">Local Time</option>
+                    <option value="America/New_York">New York, US</option>
+                    <option value="Europe/London">London, UK</option>
+                    <option value="Australia/Sydney">Sydney, AU</option>
+                </select>
+                <div class="w-[1px] h-4 bg-ink/20"></div>
+                <span id="live-time-display" class="tabular-nums min-w-[75px] text-right font-bold text-sakura-dark">--:--:--</span>
+            </div>
+        </div>
+
+        <!-- App Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold font-jp tracking-wide text-ink flex items-center justify-center gap-3 drop-shadow-[0_2px_10px_rgba(255,255,255,0.9)]">
+                <i class="fa-solid fa-seedling text-matcha-dark"></i>
+                桜 <span class="font-sans font-semibold">Mokuso Timer</span>
+            </h1>
+            <p class="text-sm mt-2 opacity-80 font-medium drop-shadow-[0_1px_5px_rgba(255,255,255,0.9)]">Cozy focus, gently paced.</p>
+        </header>
+
+        <!-- Main Timer Card -->
+        <div id="app-card" class="bg-transparent p-2 sm:p-8 transition-colors duration-700 relative overflow-visible w-full">
+            
+            <!-- Custom Time Modal (Hidden) -->
+            <div id="custom-modal" class="hidden absolute inset-0 z-50 flex flex-col items-center justify-center bg-paper/90 backdrop-blur-md transition-opacity">
+                <h3 class="text-xl font-jp font-bold text-ink mb-6 flex items-center gap-2"><i class="fa-solid fa-clock text-fuji-dark"></i> Set Timer</h3>
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="flex flex-col items-center">
+                        <input type="number" id="input-h" min="0" max="99" value="1" class="w-20 h-16 text-center text-3xl font-bold font-sans bg-white/60 border-2 border-white rounded-2xl outline-none focus:ring-4 ring-fuji/50 text-ink shadow-inner-soft transition-all">
+                        <label class="text-sm text-ink/60 mt-2 font-medium">Hours</label>
+                    </div>
+                    <span class="text-4xl font-bold pb-6 text-ink/40">:</span>
+                    <div class="flex flex-col items-center">
+                        <input type="number" id="input-m" min="0" max="59" value="0" class="w-20 h-16 text-center text-3xl font-bold font-sans bg-white/60 border-2 border-white rounded-2xl outline-none focus:ring-4 ring-fuji/50 text-ink shadow-inner-soft transition-all">
+                        <label class="text-sm text-ink/60 mt-2 font-medium">Mins</label>
+                    </div>
+                </div>
+                <div class="flex gap-4">
+                    <button onclick="closeCustomModal()" class="px-6 py-2.5 bg-white/50 text-ink/70 rounded-xl font-semibold shadow-sm hover:bg-white/80 transition-all">Cancel</button>
+                    <button onclick="applyCustomTime()" class="px-6 py-2.5 bg-fuji text-white rounded-xl font-semibold shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all">Start Custom</button>
+                </div>
+            </div>
+
+            <!-- Mode Selector -->
+            <nav class="flex justify-between items-center bg-white/40 p-1.5 rounded-2xl mb-8 relative border border-white/50 backdrop-blur-sm overflow-x-auto hide-scrollbar sm:overflow-visible">
+                <!-- Sliding Background Indicator -->
+                <div id="mode-indicator" class="absolute h-[calc(100%-12px)] bg-white rounded-xl shadow-sm transition-all duration-300 ease-out z-0 top-[6px]" style="width: calc(20% - 4px); left: 2px;"></div>
+                
+                <button onclick="setMode('pomodoro')" id="btn-pomodoro" class="mode-btn relative z-10 flex-1 min-w-[70px] py-2 text-xs sm:text-sm font-semibold rounded-xl text-sakura-dark">Focus</button>
+                <button onclick="setMode('shortBreak')" id="btn-shortBreak" class="mode-btn relative z-10 flex-1 min-w-[70px] py-2 text-xs sm:text-sm font-semibold rounded-xl text-ink/60 hover:text-ink transition-colors">Short</button>
+                <button onclick="setMode('longBreak')" id="btn-longBreak" class="mode-btn relative z-10 flex-1 min-w-[70px] py-2 text-xs sm:text-sm font-semibold rounded-xl text-ink/60 hover:text-ink transition-colors">Long</button>
+                <button onclick="setMode('stopwatch')" id="btn-stopwatch" class="mode-btn relative z-10 flex-1 min-w-[70px] py-2 text-xs sm:text-sm font-semibold rounded-xl text-ink/60 hover:text-ink transition-colors">Stopwatch</button>
+                <button onclick="setMode('custom')" id="btn-custom" class="mode-btn relative z-10 flex-1 min-w-[70px] py-2 text-xs sm:text-sm font-semibold rounded-xl text-ink/60 hover:text-ink transition-colors">Custom</button>
+            </nav>
+
+            <!-- Timer Display -->
+            <div class="flex justify-center items-center mb-8 relative">
+                <!-- SVG Progress Ring -->
+                <div class="relative w-64 h-64 flex justify-center items-center rounded-full">
+                    <svg class="w-full h-full absolute top-0 left-0 drop-shadow-md" viewBox="0 0 100 100">
+                        <!-- Background Circle -->
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="4"></circle>
+                        <!-- Progress Circle -->
+                        <circle id="progress-circle" class="progress-ring__circle" cx="50" cy="50" r="45" fill="none" stroke="#FFB7C5" stroke-width="4" stroke-linecap="round"></circle>
+                    </svg>
+                    
+                    <!-- Time Text -->
+                    <div class="text-center z-10 flex flex-col items-center justify-center w-[210px] h-[210px] rounded-full bg-transparent border-none">
+                        <span id="time-display" class="text-6xl font-bold tracking-tight text-white tabular-nums drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]">25:00</span>
+                        <span id="status-text" class="text-sm font-bold mt-2 text-white/90 uppercase tracking-widest drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">Time to focus</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex justify-center items-center gap-6">
+                <!-- Settings/Tasks -->
+                <button onclick="openCustomModal()" class="w-12 h-12 rounded-full glass-panel flex items-center justify-center text-ink/60 hover:text-ink hover:bg-white/60 transition-all shadow-sm group" title="Custom Timer Settings">
+                    <i class="fa-solid fa-clock text-sm group-hover:rotate-90 transition-transform"></i>
+                </button>
+
+                <!-- Play/Pause Button -->
+                <button id="start-btn" onclick="toggleTimer()" class="w-20 h-20 rounded-full bg-sakura text-white flex items-center justify-center text-3xl shadow-lg shadow-sakura/40 transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-sakura/50 btn-pulse">
+                    <i id="play-icon" class="fa-solid fa-play ml-1"></i>
+                </button>
+
+                <!-- Reset Button -->
+                <button onclick="resetTimer()" class="w-12 h-12 rounded-full glass-panel flex items-center justify-center text-ink/60 hover:text-ink hover:bg-white/60 transition-all shadow-sm">
+                    <i class="fa-solid fa-rotate-right text-sm"></i>
+                </button>
+            </div>
+
+            <!-- AI Focus Guide Input -->
+            <div class="mt-8 border-t border-ink/10 pt-6">
+                <label for="focus-input" class="block text-[10px] font-bold text-ink/50 uppercase tracking-wider mb-2 text-center">Ask Zen Master for a study plan</label>
+                <div class="relative flex items-center justify-center max-w-[280px] mx-auto">
+                    <input type="text" id="focus-input" placeholder="What is your focus? e.g., Math exam..." class="w-full bg-white/40 border border-white/60 rounded-xl py-2 pl-4 pr-10 text-xs text-ink placeholder-ink/40 focus:outline-none focus:ring-2 focus:ring-matcha-dark/50 shadow-inner-soft transition-all">
+                    <button onclick="getZenAdvice()" id="ai-btn" class="absolute right-1 w-7 h-7 flex items-center justify-center bg-matcha hover:bg-matcha-dark text-white rounded-lg transition-colors shadow-sm group" title="Get AI Zen Guidance">
+                        <i class="fa-solid fa-wand-magic-sparkles text-[10px] group-hover:scale-110 transition-transform"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- AI Advice Modal (Hidden) -->
+            <div id="ai-modal" class="hidden absolute inset-0 z-50 flex-col items-center justify-center p-6 bg-paper/95 backdrop-blur-md transition-opacity">
+                <div class="w-full max-w-sm relative text-left">
+                    <button onclick="closeAiModal()" class="absolute -top-2 -right-2 w-8 h-8 flex items-center justify-center text-ink/40 hover:text-ink bg-white/50 rounded-full transition-colors shadow-sm"><i class="fa-solid fa-xmark"></i></button>
+                    <h3 class="text-lg font-jp font-bold text-ink mb-4 flex items-center gap-2 border-b border-ink/10 pb-2"><i class="fa-solid fa-leaf text-matcha-dark"></i> Zen Master's Guide</h3>
+                    
+                    <div id="ai-loading" class="hidden flex-col items-center justify-center py-8">
+                        <i class="fa-solid fa-fan fa-spin text-3xl text-sakura mb-3"></i>
+                        <p class="text-sm text-ink/60 animate-pulse mt-3">Consulting the spirits...</p>
+                    </div>
+
+                    <div id="ai-content" class="text-sm text-ink/80 leading-relaxed max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar space-y-3 font-sans">
+                        <!-- AI content injected here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Quote (AI Powered) -->
+        <div class="mt-8 text-center text-ink font-jp relative group flex flex-col items-center justify-center w-full max-w-sm mx-auto glass-panel rounded-xl py-3 px-6 shadow-sm">
+            <button onclick="fetchNewQuote()" class="absolute -right-2 -top-2 bg-white text-ink/40 hover:text-sakura-dark w-8 h-8 rounded-full shadow-sm transition-colors opacity-0 group-hover:opacity-100 flex items-center justify-center" title="New Zen Quote">
+                <i id="refresh-quote-btn" class="fa-solid fa-arrows-rotate text-xs"></i>
+            </button>
+            <p id="quote-jp" class="text-lg font-bold transition-opacity duration-500">"千里の道も一歩から"</p>
+            <p id="quote-en" class="text-xs mt-1 font-sans opacity-80 transition-opacity duration-500">A journey of a thousand miles begins with a single step.</p>
+        </div>
+    </main>
+
+    <script>
+        // --- State and Configuration ---
+        const MODES = {
+            pomodoro: { time: 25 * 60, color: '#FFB7C5', theme: 'sakura', label: 'Time to focus', pos: '2px' },
+            shortBreak: { time: 5 * 60, color: '#B2D3C2', theme: 'matcha', label: 'Take a breather', pos: 'calc(20% + 2px)' },
+            longBreak: { time: 15 * 60, color: '#8CA6D9', theme: 'indigo', label: 'Rest well', pos: 'calc(40% + 2px)' },
+            stopwatch: { time: 0, color: '#FFD57E', theme: 'yuzu', label: 'Counting up...', pos: 'calc(60% + 2px)' },
+            custom: { time: 60 * 60, color: '#B5AED4', theme: 'fuji', label: 'Custom Timer', pos: 'calc(80% + 2px)' }
+        };
+
+        let currentMode = 'pomodoro';
+        let timeLeft = MODES[currentMode].time;
+        let timeElapsed = 0; // For stopwatch
+        let isRunning = false;
+        let timerInterval = null;
+
+        // --- DOM Elements ---
+        const timeDisplay = document.getElementById('time-display');
+        const statusText = document.getElementById('status-text');
+        const progressCircle = document.getElementById('progress-circle');
+        const startBtn = document.getElementById('start-btn');
+        const playIcon = document.getElementById('play-icon');
+        const modeIndicator = document.getElementById('mode-indicator');
+        const customModal = document.getElementById('custom-modal');
+        
+        // Setup SVG Circle Math
+        const radius = progressCircle.r.baseVal.value;
+        const circumference = 2 * Math.PI * radius;
+        progressCircle.style.strokeDasharray = `${circumference} ${circumference}`;
+        progressCircle.style.strokeDashoffset = circumference; // Start empty
+
+        // --- Formatting Helper ---
+        function formatTime(seconds) {
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = seconds % 60;
+            
+            if (h > 0) {
+                return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            }
+            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        // --- UI Updates ---
+        function updateUI() {
+            let displayTime = currentMode === 'stopwatch' ? timeElapsed : timeLeft;
+            timeDisplay.textContent = formatTime(displayTime);
+            
+            // Adjust font size dynamically if hours are displayed to prevent overflow
+            if (displayTime >= 3600) {
+                timeDisplay.classList.replace('text-6xl', 'text-5xl');
+            } else if (timeDisplay.classList.contains('text-5xl')) {
+                timeDisplay.classList.replace('text-5xl', 'text-6xl');
+            }
+            
+            // Update Circle Progress
+            if (currentMode === 'stopwatch') {
+                // Fills up completely every 60 seconds (smooth visual feedback)
+                const progress = (timeElapsed % 60) / 60;
+                const offset = timeElapsed > 0 && timeElapsed % 60 === 0 
+                               ? 0 
+                               : circumference - (progress * circumference);
+                progressCircle.style.strokeDashoffset = offset;
+            } else {
+                const totalTime = MODES[currentMode].time;
+                const progress = totalTime > 0 ? timeLeft / totalTime : 0;
+                const offset = circumference - (progress * circumference);
+                progressCircle.style.strokeDashoffset = offset;
+            }
+            
+            // Update Document Title
+            document.title = `${formatTime(displayTime)} - ${MODES[currentMode].label}`;
+        }
+
+        // --- Timer Controls ---
+        function toggleTimer() {
+            if (isRunning) pauseTimer();
+            else startTimer();
+        }
+
+        function startTimer() {
+            if (isRunning) return;
+            
+            // Prompt custom modal if timer is at 0
+            if (currentMode === 'custom' && MODES['custom'].time === 0) {
+                openCustomModal();
+                return;
+            }
+
+            isRunning = true;
+            playIcon.classList.replace('fa-play', 'fa-pause');
+            playIcon.classList.remove('ml-1'); 
+            startBtn.classList.remove('btn-pulse'); 
+            
+            timerInterval = setInterval(() => {
+                if (currentMode === 'stopwatch') {
+                    timeElapsed++;
+                    updateUI();
+                } else {
+                    timeLeft--;
+                    updateUI();
+                    
+                    if (timeLeft <= 0) {
+                        clearInterval(timerInterval);
+                        isRunning = false;
+                        handleTimerComplete();
+                    }
+                }
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            isRunning = false;
+            clearInterval(timerInterval);
+            
+            playIcon.classList.replace('fa-pause', 'fa-play');
+            playIcon.classList.add('ml-1');
+            startBtn.classList.add('btn-pulse');
+            updateUI();
+        }
+
+        function resetTimer() {
+            pauseTimer();
+            if (currentMode === 'stopwatch') {
+                timeElapsed = 0;
+            } else {
+                timeLeft = MODES[currentMode].time;
+            }
+            updateUI();
+        }
+
+        function handleTimerComplete() {
+            playIcon.classList.remove('fa-pause');
+            playIcon.classList.add('fa-rotate-right');
+            playIcon.classList.remove('ml-1');
+            startBtn.classList.add('btn-pulse');
+            
+            document.body.style.transition = "background-color 0.5s ease";
+            const originalBg = document.body.style.background;
+            document.body.style.background = "#fff";
+            setTimeout(() => { document.body.style.background = originalBg; }, 500);
+        }
+
+        // --- Mode Switching & Custom Modal ---
+        function setMode(mode) {
+            // Trigger setup if switching to un-configured custom timer
+            if (mode === 'custom' && currentMode !== 'custom' && MODES['custom'].time === 0) {
+                openCustomModal();
+            }
+
+            if (isRunning) {
+                const btn = document.getElementById(`btn-${mode}`);
+                btn.style.transform = "translateX(5px)";
+                setTimeout(() => btn.style.transform = "translateX(-5px)", 100);
+                setTimeout(() => btn.style.transform = "translateX(0)", 200);
+                pauseTimer(); 
+            }
+
+            currentMode = mode;
+            const config = MODES[mode];
+            
+            if (mode === 'stopwatch') {
+                timeElapsed = 0; // Reset stopwatch when switching to it
+            } else {
+                timeLeft = config.time;
+            }
+
+            // Update Indicator Position via style directly to support arbitrary values
+            modeIndicator.style.left = config.pos;
+
+            // Update Text Colors
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.className = 'mode-btn relative z-10 flex-1 min-w-[70px] py-2 text-xs sm:text-sm font-semibold rounded-xl text-ink/60 hover:text-ink transition-colors';
+            });
+            const activeBtn = document.getElementById(`btn-${mode}`);
+            activeBtn.classList.remove('text-ink/60', 'hover:text-ink');
+            activeBtn.classList.add(`text-${config.theme}-dark`);
+
+            // Update Theme Colors
+            progressCircle.style.stroke = config.color;
+            startBtn.style.backgroundColor = config.color;
+            statusText.textContent = config.label;
+            startBtn.style.boxShadow = `0 10px 15px -3px ${config.color}66`;
+
+            // Reset icon state
+            playIcon.classList.remove('fa-pause', 'fa-rotate-right');
+            playIcon.classList.add('fa-play', 'ml-1');
+            startBtn.classList.add('btn-pulse');
+
+            updateUI();
+        }
+
+        function openCustomModal() {
+            setMode('custom');
+            customModal.classList.remove('hidden');
+        }
+
+        function closeCustomModal() {
+            customModal.classList.add('hidden');
+        }
+
+        function applyCustomTime() {
+            const h = parseInt(document.getElementById('input-h').value) || 0;
+            const m = parseInt(document.getElementById('input-m').value) || 0;
+            let totalSeconds = (h * 3600) + (m * 60);
+            
+            if (totalSeconds === 0) totalSeconds = 60; // fallback to 1 min minimum
+
+            MODES['custom'].time = totalSeconds;
+            timeLeft = totalSeconds;
+            
+            closeCustomModal();
+            updateUI();
+        }
+
+        function resetTimer() {
+            pauseTimer();
+            timeLeft = MODES[currentMode].time;
+            updateUI();
+        }
+
+        function handleTimerComplete() {
+            // Simple visual notification
+            playIcon.classList.remove('fa-pause');
+            playIcon.classList.add('fa-rotate-right');
+            playIcon.classList.remove('ml-1');
+            startBtn.classList.add('btn-pulse');
+            
+            // Flash the screen gently
+            document.body.style.transition = "background-color 0.5s ease";
+            const originalBg = document.body.style.background;
+            document.body.style.background = "#fff";
+            setTimeout(() => {
+                document.body.style.background = originalBg;
+            }, 500);
+        }
+
+        // --- Mode Switching ---
+        function setMode(mode) {
+            if (isRunning) {
+                // Prompt visually (instead of alert) by shaking button briefly
+                const btn = document.getElementById(`btn-${mode}`);
+                btn.style.transform = "translateX(5px)";
+                setTimeout(() => btn.style.transform = "translateX(-5px)", 100);
+                setTimeout(() => btn.style.transform = "translateX(0)", 200);
+                // We auto-pause on mode switch for safety
+                pauseTimer(); 
+            }
+
+            currentMode = mode;
+            timeLeft = MODES[mode].time;
+            const config = MODES[mode];
+
+            // Update Indicator Position
+            modeIndicator.className = `absolute h-[calc(100%-12px)] w-[calc(33.33%-4px)] bg-white rounded-xl shadow-sm transition-all duration-300 ease-out z-0 top-[6px] ${config.indicatorPos}`;
+
+            // Update Text Colors
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.remove('text-sakura-dark', 'text-matcha-dark', 'text-indigo-dark');
+                btn.classList.add('text-ink/60');
+            });
+            document.getElementById(`btn-${mode}`).classList.remove('text-ink/60');
+            document.getElementById(`btn-${mode}`).classList.add(`text-${config.theme}-dark`);
+
+            // Update Theme Colors
+            progressCircle.style.stroke = config.color;
+            startBtn.style.backgroundColor = config.color;
+            statusText.textContent = config.label;
+            
+            // Adjust shadows based on theme
+            startBtn.style.boxShadow = `0 10px 15px -3px ${config.color}66`;
+
+            // Reset icon state
+            playIcon.classList.remove('fa-pause', 'fa-rotate-right');
+            playIcon.classList.add('fa-play', 'ml-1');
+            startBtn.classList.add('btn-pulse');
+
+            updateUI();
+        }
+
+        // --- Sakura Petal Animation System ---
+        function createSakuraPetal() {
+            const container = document.getElementById('sakura-container');
+            const petal = document.createElement('div');
+            
+            // Randomize properties
+            const size = Math.random() * 8 + 6; // 6px to 14px
+            const startPosX = Math.random() * window.innerWidth;
+            const durationFall = Math.random() * 5 + 7; // 7s to 12s
+            const durationSway = Math.random() * 3 + 2; // 2s to 5s
+            const delay = Math.random() * 5;
+            const opacity = Math.random() * 0.5 + 0.3; // 0.3 to 0.8
+            
+            // Determine color slightly based on mode, mostly pink
+            let bgColor = '#FFB7C5';
+            if(Math.random() > 0.8) {
+               bgColor = '#FFE4E1'; // lighter pink
+            }
+
+            petal.className = 'sakura-petal';
+            petal.style.width = `${size}px`;
+            petal.style.height = `${size * 1.4}px`; // slightly elongated
+            petal.style.left = `${startPosX}px`;
+            petal.style.top = `-20px`;
+            petal.style.opacity = opacity;
+            petal.style.backgroundColor = bgColor;
+            
+            // Combine fall and sway animations
+            petal.style.animation = `
+                fall ${durationFall}s linear ${delay}s infinite,
+                sway ${durationSway}s ease-in-out ${delay}s infinite alternate
+            `;
+
+            container.appendChild(petal);
+
+            // Cleanup to prevent DOM overload (though infinite animation means we can just keep a fixed pool)
+            setTimeout(() => {
+                if (petal.parentNode) {
+                    petal.remove();
+                }
+            }, (durationFall + delay) * 1000);
+        }
+
+        // --- Live Clock System ---
+        function updateClock() {
+            const tz = document.getElementById('tz-select').value;
+            const now = new Date();
+            let options = { timeStyle: 'medium', hour12: true };
+            
+            if (tz !== 'auto') {
+                options.timeZone = tz;
+            }
+            
+            try {
+                document.getElementById('live-time-display').textContent = now.toLocaleTimeString('en-US', options);
+            } catch (e) {
+                // Fallback if timezone string is invalid in some browsers
+                document.getElementById('live-time-display').textContent = now.toLocaleTimeString('en-US');
+            }
+        }
+
+        // Initialize App
+        function init() {
+            // Set initial UI
+            updateUI();
+            setMode('pomodoro');
+            
+            // Start Live Clock
+            updateClock();
+            setInterval(updateClock, 1000);
+
+            // Fetch an initial AI quote
+            fetchNewQuote();
+            
+            // Generate a steady stream of petals
+            // Start with a few immediately
+            for(let i=0; i<15; i++) {
+                setTimeout(createSakuraPetal, Math.random() * 3000);
+            }
+            
+            // Continue spawning
+            setInterval(() => {
+                // Keep max petals around 30 to save performance
+                if(document.querySelectorAll('.sakura-petal').length < 35) {
+                    createSakuraPetal();
+                }
+            }, 800);
+        }
+
+        // --- Gemini AI Integration ---
+        const geminiApiKey = ""; // Canvas injects this automatically
+        
+        async function fetchGeminiWithBackoff(url, payload, maxRetries = 3) {
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) {
+                        if (response.status === 429) throw new Error("Rate limited");
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    if (i === maxRetries - 1) throw error;
+                    await new Promise(res => setTimeout(res, Math.pow(2, i) * 1000)); // Exponential backoff: 1s, 2s, 4s
+                }
+            }
+        }
+
+        async function getZenAdvice() {
+            const input = document.getElementById('focus-input').value.trim();
+            if (!input) return;
+
+            const modal = document.getElementById('ai-modal');
+            const loading = document.getElementById('ai-loading');
+            const content = document.getElementById('ai-content');
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            loading.classList.remove('hidden');
+            loading.classList.add('flex');
+            content.innerHTML = '';
+            
+            const systemPrompt = "You are a wise, encouraging Japanese Zen master helping a student focus. They will give you a task they need to do. Break it down into 2-3 very short, actionable steps suitable for Pomodoro sessions (25 mins each). Provide a brief, calming opening and closing thought using a touch of nature or Zen imagery. Format the response with simple HTML tags (like <p>, <ul>, <li>, <strong>) for readability. Do NOT use markdown code blocks.";
+            
+            const payload = {
+                contents: [{ parts: [{ text: `I need to focus on: ${input}. Please guide me.` }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] }
+            };
+
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${geminiApiKey}`;
+
+            try {
+                const result = await fetchGeminiWithBackoff(apiUrl, payload);
+                const candidate = result.candidates?.[0];
+                if (candidate && candidate.content?.parts?.[0]?.text) {
+                    loading.classList.add('hidden');
+                    loading.classList.remove('flex');
+                    content.innerHTML = candidate.content.parts[0].text;
+                } else {
+                    throw new Error("Invalid response format");
+                }
+            } catch (error) {
+                loading.classList.add('hidden');
+                loading.classList.remove('flex');
+                content.innerHTML = `<p class="text-sakura-dark font-bold text-center mt-4">The wind is too strong right now. Please try asking again later.</p>`;
+            }
+        }
+
+        function closeAiModal() {
+            const modal = document.getElementById('ai-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        async function fetchNewQuote() {
+            const quoteText = document.getElementById('quote-jp');
+            const quoteEn = document.getElementById('quote-en');
+            const refreshBtn = document.getElementById('refresh-quote-btn');
+            
+            if (refreshBtn) refreshBtn.classList.add('fa-spin');
+            
+            const payload = {
+                contents: [{ parts: [{ text: "Give me a single, distinct Japanese proverb or quote about perseverance, focus, or inner peace. Ensure it's different from common ones. Format as JSON." }] }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            japanese: { type: "STRING" },
+                            english: { type: "STRING" }
+                        },
+                        required: ["japanese", "english"]
+                    }
+                }
+            };
+            
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${geminiApiKey}`;
+            
+            try {
+                const result = await fetchGeminiWithBackoff(apiUrl, payload);
+                if (result.candidates && result.candidates[0].content?.parts?.[0]?.text) {
+                    const json = JSON.parse(result.candidates[0].content.parts[0].text);
+                    
+                    // Fade out
+                    quoteText.style.opacity = 0;
+                    quoteEn.style.opacity = 0;
+                    
+                    setTimeout(() => {
+                        quoteText.textContent = `"${json.japanese}"`;
+                        quoteEn.textContent = json.english;
+                        // Fade in
+                        quoteText.style.opacity = 1;
+                        quoteEn.style.opacity = 1;
+                    }, 500);
+                }
+            } catch (e) {
+                console.error("Failed to fetch quote", e);
+            } finally {
+                if (refreshBtn) refreshBtn.classList.remove('fa-spin');
+            }
+        }
+
+        // Start everything when DOM is ready
+        window.addEventListener('DOMContentLoaded', init);
+
+    </script>
+</body>
+</html>
